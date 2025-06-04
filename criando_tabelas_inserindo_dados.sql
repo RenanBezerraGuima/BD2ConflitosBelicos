@@ -56,6 +56,7 @@ CREATE TABLE ConflitoPais (
     FOREIGN KEY (CodConflito) REFERENCES Conflito(CodConflito)
 );
 
+-- especialização de Conflitos
 -- Tabelas para os tipos de conflitos (Hierarquia)
 CREATE TABLE Territorial (
     CodConflito INT PRIMARY KEY,
