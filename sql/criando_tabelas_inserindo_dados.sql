@@ -2,7 +2,7 @@
 -- Tabela GrupoArmado
 DROP TABLE IF EXISTS GrupoArmado CASCADE;
 
-CREATE TABLE GrupoArmado (
+CREATE TABLE IF NOT EXISTS GrupoArmado (
     CodigoG SERIAL PRIMARY KEY,
     NomeGrupo VARCHAR(100) NOT NULL UNIQUE,
     NumBaixasG INT DEFAULT 0
@@ -11,7 +11,7 @@ CREATE TABLE GrupoArmado (
 -- Tabela LiderPolitico
 DROP TABLE IF EXISTS LiderPolitico CASCADE;
 
-CREATE TABLE LiderPolitico (
+CREATE TABLE IF NOT EXISTS LiderPolitico (
     NomeL VARCHAR(100) PRIMARY KEY,
     CodigoG INT,
     Apoios TEXT,
@@ -21,7 +21,7 @@ CREATE TABLE LiderPolitico (
 -- Tabela Divisao
 DROP TABLE IF EXISTS Divisao CASCADE;
 
-CREATE TABLE Divisao (
+CREATE TABLE IF NOT EXISTS Divisao (
     NroDivisao SERIAL,
     CodigoG INT,
     NumBaixasD INT DEFAULT 0,
@@ -36,7 +36,7 @@ CREATE TABLE Divisao (
 -- Tabela ChefeMilitar
 DROP TABLE IF EXISTS ChefeMilitar CASCADE;
 
-CREATE TABLE ChefeMilitar (
+CREATE TABLE IF NOT EXISTS ChefeMilitar (
     codigoChef SERIAL PRIMARY KEY,
     Faixa VARCHAR(50),
     NroDivisao INT,
@@ -49,7 +49,7 @@ CREATE TABLE ChefeMilitar (
 -- Tabela Conflito
 DROP TABLE IF EXISTS Conflito CASCADE;
 
-CREATE TABLE Conflito (
+CREATE TABLE IF NOT EXISTS Conflito (
     CodConflito SERIAL PRIMARY KEY,
     Nome VARCHAR(100) NOT NULL,
     NumFeridos INT,
@@ -60,7 +60,7 @@ CREATE TABLE Conflito (
 -- Tabela ConflitoPais
 DROP TABLE IF EXISTS ConflitoPais CASCADE;
 
-CREATE TABLE ConflitoPais (
+CREATE TABLE IF NOT EXISTS ConflitoPais (
     CodConflito INT,
     Pais VARCHAR(100),
     PRIMARY KEY (CodConflito, Pais),
@@ -70,7 +70,7 @@ CREATE TABLE ConflitoPais (
 -- Tabelas para os tipos de conflitos (Hierarquia)
 DROP TABLE IF EXISTS Territorial CASCADE;
 
-CREATE TABLE Territorial (
+CREATE TABLE IF NOT EXISTS Territorial (
     CodConflito INT PRIMARY KEY,
     Regiao VARCHAR(100),
     FOREIGN KEY (CodConflito) REFERENCES Conflito (CodConflito)
@@ -78,7 +78,7 @@ CREATE TABLE Territorial (
 
 DROP TABLE IF EXISTS Religioso CASCADE;
 
-CREATE TABLE Religioso (
+CREATE TABLE IF NOT EXISTS Religioso (
     CodConflito INT PRIMARY KEY,
     Religiao VARCHAR(100),
     FOREIGN KEY (CodConflito) REFERENCES Conflito (CodConflito)
@@ -86,7 +86,7 @@ CREATE TABLE Religioso (
 
 DROP TABLE IF EXISTS Economico CASCADE;
 
-CREATE TABLE Economico (
+CREATE TABLE IF NOT EXISTS Economico (
     CodConflito INT PRIMARY KEY,
     MatPrima VARCHAR(100),
     FOREIGN KEY (CodConflito) REFERENCES Conflito (CodConflito)
@@ -94,7 +94,7 @@ CREATE TABLE Economico (
 
 DROP TABLE IF EXISTS Racial CASCADE;
 
-CREATE TABLE Racial (
+CREATE TABLE IF NOT EXISTS Racial (
     CodConflito INT PRIMARY KEY,
     Etnia VARCHAR(100),
     FOREIGN KEY (CodConflito) REFERENCES Conflito (CodConflito)
@@ -103,7 +103,7 @@ CREATE TABLE Racial (
 -- Tabela de Participação de Grupos Armados em Conflitos (EntPart)
 DROP TABLE IF EXISTS EntPart CASCADE;
 
-CREATE TABLE EntPart (
+CREATE TABLE IF NOT EXISTS EntPart (
     IdEntPart SERIAL PRIMARY KEY,
     CodigoG INT,
     CodConflito INT,
@@ -116,7 +116,7 @@ CREATE TABLE EntPart (
 -- Tabela OrganizacaoM
 DROP TABLE IF EXISTS OrganizacaoM CASCADE;
 
-CREATE TABLE OrganizacaoM (
+CREATE TABLE IF NOT EXISTS OrganizacaoM (
     CodigoOrg SERIAL PRIMARY KEY,
     NomeOrg VARCHAR(100) NOT NULL,
     Tipo VARCHAR(50) NOT NULL CHECK (
@@ -132,7 +132,7 @@ CREATE TABLE OrganizacaoM (
 -- Tabela de Mediação de Organizações em Conflitos (EntradMed)
 DROP TABLE IF EXISTS EntradMed CASCADE;
 
-CREATE TABLE EntradMed (
+CREATE TABLE IF NOT EXISTS EntradMed (
     IdEntMed SERIAL PRIMARY KEY,
     CodigoOrg INT,
     CodConflito INT,
@@ -149,7 +149,7 @@ CREATE TABLE EntradMed (
 -- Tabela Dialoga
 DROP TABLE IF EXISTS Dialoga CASCADE;
 
-CREATE TABLE Dialoga (
+CREATE TABLE IF NOT EXISTS Dialoga (
     IdDial SERIAL PRIMARY KEY,
     NomeL VARCHAR(100),
     CodigoOrg INT,
@@ -160,12 +160,12 @@ CREATE TABLE Dialoga (
 -- Tabela Traficante
 DROP TABLE IF EXISTS Traficante CASCADE;
 
-CREATE TABLE Traficante (NomeTraf VARCHAR(100) PRIMARY KEY);
+CREATE TABLE IF NOT EXISTS Traficante (NomeTraf VARCHAR(100) PRIMARY KEY);
 
 -- Tabela TipoArma
 DROP TABLE IF EXISTS TipoArma CASCADE;
 
-CREATE TABLE TipoArma (
+CREATE TABLE IF NOT EXISTS TipoArma (
     NomeArma VARCHAR(100) PRIMARY KEY,
     Indicador INT -- Capacidade destrutiva
 );
@@ -173,7 +173,7 @@ CREATE TABLE TipoArma (
 -- Tabela PodeFornecer (relaciona Traficante e TipoArma)
 DROP TABLE IF EXISTS PodeFornecer CASCADE;
 
-CREATE TABLE PodeFornecer (
+CREATE TABLE IF NOT EXISTS PodeFornecer (
     IdPodeF SERIAL PRIMARY KEY,
     NomeTraf VARCHAR(100),
     NomeArma VARCHAR(100),
@@ -185,7 +185,7 @@ CREATE TABLE PodeFornecer (
 -- Tabela Fornece (relaciona Traficante, TipoArma e GrupoArmado)
 DROP TABLE IF EXISTS Fornece CASCADE;
 
-CREATE TABLE Fornece (
+CREATE TABLE IF NOT EXISTS Fornece (
     IdFornece SERIAL PRIMARY KEY,
     CodigoG INT,
     NomeArma VARCHAR(100),
@@ -195,6 +195,109 @@ CREATE TABLE Fornece (
     FOREIGN KEY (NomeArma) REFERENCES TipoArma (NomeArma),
     FOREIGN KEY (NomeTraf) REFERENCES Traficante (NomeTraf)
 );
+
+-- =========== CRIANDO FUNÇÕES & TRIGGERS ===========
+-- Optei por construir uma função para checar se uma determinada divisão possui menos de 3 chefes.
+
+CREATE OR REPLACE FUNCTION checar_qtd_chefes_divisao(id_divisao INT)
+RETURNS BOOLEAN AS $$
+    DECLARE
+        contagem_atual INTEGER;
+    BEGIN
+        select count(*)
+        into contagem_atual
+        from chefemilitar as c
+        where c.nrodivisao = id_divisao;
+        return contagem_atual <= 3;
+    END;
+$$ LANGUAGE plpgsql;
+
+DROP FUNCTION IF EXISTS checar_qtd_grupos_conflito();
+
+CREATE OR REPLACE FUNCTION checar_qtd_grupos_conflito()
+RETURNS TRIGGER AS $$
+    DECLARE
+        contagem_atual INTEGER;
+    BEGIN
+        select count(*)
+        into contagem_atual
+        from entpart as e
+        where e.codconflito = OLD.codconflito;
+        IF (contagem_atual < 2) THEN
+            RAISE EXCEPTION 'Um conflito deve envolver no mínimo 2 grupos! Operação abortada.';
+        END IF;
+        RETURN OLD;
+    END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_checar_minimo_paises ON EntPart;
+
+CREATE OR REPLACE TRIGGER trigger_checar_minimo_paises
+AFTER DELETE OR UPDATE ON EntPart
+FOR EACH ROW
+EXECUTE FUNCTION checar_qtd_grupos_conflito();
+
+CREATE OR REPLACE FUNCTION sincronizar_baixas_conflito()
+RETURNS TRIGGER AS $$
+DECLARE
+    diferenca_baixas INT;
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+        UPDATE Conflito
+        SET NumMortos = COALESCE(NumMortos, 0) + NEW.NumBaixasD
+        WHERE CodConflito IN (
+            SELECT CodConflito FROM EntPart WHERE CodigoG = NEW.CodigoG AND DSGrupo IS NULL
+        );
+        RETURN NEW;
+    ELSIF (TG_OP = 'DELETE') THEN
+        UPDATE Conflito
+        SET NumMortos = COALESCE(NumMortos, 0) - OLD.NumBaixasD
+        WHERE CodConflito IN (
+            SELECT CodConflito FROM EntPart WHERE CodigoG = OLD.CodigoG
+        );
+        RETURN OLD;
+    ELSIF (TG_OP = 'UPDATE') THEN
+        IF NEW.NumBaixasD <> OLD.NumBaixasD THEN
+            diferenca_baixas := NEW.NumBaixasD - OLD.NumBaixasD;
+            UPDATE Conflito
+            SET NumMortos = COALESCE(NumMortos, 0) + diferenca_baixas
+            WHERE CodConflito IN (
+                SELECT CodConflito FROM EntPart WHERE CodigoG = NEW.CodigoG AND DSGrupo IS NULL
+            );
+        END IF;
+        RETURN NEW;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_sincronizar_mortos ON Divisao;
+
+CREATE TRIGGER trigger_sincronizar_mortos
+AFTER INSERT OR UPDATE OR DELETE ON Divisao
+FOR EACH ROW
+EXECUTE FUNCTION sincronizar_baixas_conflito();
+
+--CREATE OR REPLACE FUNCTION definir_nrodivisao_sequencial()
+--RETURNS TRIGGER AS $$
+--BEGIN
+--    SELECT COALESCE(MAX(NroDivisao), 0) + 1
+--    INTO NEW.NroDivisao
+--    FROM Divisao
+--    WHERE CodigoG = NEW.CodigoG;
+--
+--    RETURN NEW; -- Retorna a NOVA linha, agora com o NroDivisao preenchido.
+--END;
+--$$ LANGUAGE plpgsql;
+
+--DROP TRIGGER IF EXISTS trigger_definir_nrodivisao ON Divisao;
+
+--CREATE TRIGGER trigger_definir_nrodivisao
+--BEFORE INSERT ON Divisao
+--FOR EACH ROW
+--EXECUTE FUNCTION definir_nrodivisao_sequencial();
+
+ALTER TABLE ChefeMilitar ADD CONSTRAINT limite_chefes_por_divisao CHECK(checar_qtd_chefes_divisao(nrodivisao));
 
 -- =========== POPULANDO AS TABELAS ===========
 -- Inserindo Grupos Armados
