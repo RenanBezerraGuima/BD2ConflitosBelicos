@@ -1,5 +1,5 @@
 streamlit
-psycopg
-matplotlib.pyplot
+psycopg[binary,pool]
+matplotlib
 pandas
 datetime
