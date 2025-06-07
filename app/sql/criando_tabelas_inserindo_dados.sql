@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS LiderPolitico (
 DROP TABLE IF EXISTS Divisao CASCADE;
 
 CREATE TABLE IF NOT EXISTS Divisao (
-    NroDivisao SERIAL,
+    NroDivisao INT,
     CodigoG INT,
     NumBaixasD INT DEFAULT 0,
     Barcos INT,
@@ -198,7 +198,6 @@ CREATE TABLE IF NOT EXISTS Fornece (
 
 -- =========== CRIANDO FUNÇÕES & TRIGGERS ===========
 -- Optei por construir uma função para checar se uma determinada divisão possui menos de 3 chefes.
-
 CREATE OR REPLACE FUNCTION checar_qtd_chefes_divisao(id_divisao INT)
 RETURNS BOOLEAN AS $$
     DECLARE
@@ -208,49 +207,76 @@ RETURNS BOOLEAN AS $$
         into contagem_atual
         from chefemilitar as c
         where c.nrodivisao = id_divisao;
-        return contagem_atual <= 3;
+        IF (contagem_atual > 3) THEN
+            RAISE EXCEPTION 'Uma divisão deve possuir no máximo 3 chefes militares! Operação abortada.';
+        END IF;
+        return TRUE;
     END;
 $$ LANGUAGE plpgsql;
 
-DROP FUNCTION IF EXISTS checar_qtd_grupos_conflito();
-
+-- Optei por construir uma função para checar se, após fazer as devidas inserções, os conflitos não podem ter menos de dois grupos envolvidos
 CREATE OR REPLACE FUNCTION checar_qtd_grupos_conflito()
 RETURNS TRIGGER AS $$
     DECLARE
-        contagem_atual INTEGER;
+        v_contagem INTEGER;
+        v_codconflito_antigo INTEGER;
+        v_codconflito_novo INTEGER;
     BEGIN
-        select count(*)
-        into contagem_atual
-        from entpart as e
-        where e.codconflito = OLD.codconflito;
-        IF (contagem_atual < 2) THEN
-            RAISE EXCEPTION 'Um conflito deve envolver no mínimo 2 grupos! Operação abortada.';
+        IF (TG_OP = 'DELETE') THEN
+            v_codconflito_antigo := OLD.codconflito;
+        ELSIF (TG_OP = 'UPDATE') THEN
+            v_codconflito_antigo := OLD.codconflito;
+            v_codconflito_novo := NEW.codconflito;
+        ELSIF (TG_OP = 'INSERT') THEN
+            v_codconflito_novo := NEW.codconflito;
         END IF;
-        RETURN OLD;
+        IF v_codconflito_antigo IS NOT NULL THEN
+            IF v_codconflito_antigo <> v_codconflito_novo OR v_codconflito_novo IS NULL THEN
+                select count(*)
+                into v_contagem
+                from entpart as e
+                where e.codconflito = v_codconflito_antigo;
+                IF v_contagem < 2 THEN
+                    RAISE EXCEPTION 'Um conflito deve envolver no mínimo 2 grupos participando! Operação abortada.';
+                END IF;
+            END IF;
+        END IF;
+        IF v_codconflito_novo IS NOT NULL THEN
+            select count(*)
+            into v_contagem
+            from entpart as e
+            where e.codconflito = v_codconflito_novo;
+            IF v_contagem < 2 THEN
+                RAISE EXCEPTION 'Um conflito deve envolver no mínimo 2 grupos participando! Operação abortada.';
+            END IF;
+        END IF;
+        RETURN coalesce(NEW, OLD);
     END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trigger_checar_minimo_paises ON EntPart;
+DROP TRIGGER IF EXISTS trigger_checar_minimo_grupos ON EntPart;
 
-CREATE OR REPLACE TRIGGER trigger_checar_minimo_paises
-AFTER DELETE OR UPDATE ON EntPart
+CREATE CONSTRAINT TRIGGER trigger_checar_minimo_grupos
+AFTER INSERT OR UPDATE OR DELETE ON EntPart
+DEFERRABLE INITIALLY DEFERRED
 FOR EACH ROW
 EXECUTE FUNCTION checar_qtd_grupos_conflito();
 
+-- Optei por construir uma função que sincronize as baixas de um conflito com base nas baixas das divisões
 CREATE OR REPLACE FUNCTION sincronizar_baixas_conflito()
 RETURNS TRIGGER AS $$
 DECLARE
     diferenca_baixas INT;
 BEGIN
     IF (TG_OP = 'INSERT') THEN
-        UPDATE Conflito
+        UPDATE conflito
         SET NumMortos = COALESCE(NumMortos, 0) + NEW.NumBaixasD
         WHERE CodConflito IN (
             SELECT CodConflito FROM EntPart WHERE CodigoG = NEW.CodigoG AND DSGrupo IS NULL
         );
         RETURN NEW;
     ELSIF (TG_OP = 'DELETE') THEN
-        UPDATE Conflito
+        UPDATE conflito
         SET NumMortos = COALESCE(NumMortos, 0) - OLD.NumBaixasD
         WHERE CodConflito IN (
             SELECT CodConflito FROM EntPart WHERE CodigoG = OLD.CodigoG
@@ -259,7 +285,7 @@ BEGIN
     ELSIF (TG_OP = 'UPDATE') THEN
         IF NEW.NumBaixasD <> OLD.NumBaixasD THEN
             diferenca_baixas := NEW.NumBaixasD - OLD.NumBaixasD;
-            UPDATE Conflito
+            UPDATE conflito
             SET NumMortos = COALESCE(NumMortos, 0) + diferenca_baixas
             WHERE CodConflito IN (
                 SELECT CodConflito FROM EntPart WHERE CodigoG = NEW.CodigoG AND DSGrupo IS NULL
@@ -278,24 +304,24 @@ AFTER INSERT OR UPDATE OR DELETE ON Divisao
 FOR EACH ROW
 EXECUTE FUNCTION sincronizar_baixas_conflito();
 
---CREATE OR REPLACE FUNCTION definir_nrodivisao_sequencial()
---RETURNS TRIGGER AS $$
---BEGIN
---    SELECT COALESCE(MAX(NroDivisao), 0) + 1
---    INTO NEW.NroDivisao
---    FROM Divisao
---    WHERE CodigoG = NEW.CodigoG;
---
---    RETURN NEW; -- Retorna a NOVA linha, agora com o NroDivisao preenchido.
---END;
---$$ LANGUAGE plpgsql;
+-- Optei por criar uma função que garante que o número da divisão num determinado grupo armado seja sequencial
+CREATE OR REPLACE FUNCTION definir_nrodivisao_sequencial()
+RETURNS TRIGGER AS $$
+BEGIN
+    select coalesce(MAX(NroDivisao), 0) + 1
+    into NEW.nrodivisao
+    from divisao as d
+    where d.codigog = NEW.codigog;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
---DROP TRIGGER IF EXISTS trigger_definir_nrodivisao ON Divisao;
+DROP TRIGGER IF EXISTS trigger_definir_nrodivisao ON Divisao;
 
---CREATE TRIGGER trigger_definir_nrodivisao
---BEFORE INSERT ON Divisao
---FOR EACH ROW
---EXECUTE FUNCTION definir_nrodivisao_sequencial();
+CREATE TRIGGER trigger_definir_nrodivisao
+BEFORE INSERT ON Divisao
+FOR EACH ROW
+EXECUTE FUNCTION definir_nrodivisao_sequencial();
 
 ALTER TABLE ChefeMilitar ADD CONSTRAINT limite_chefes_por_divisao CHECK(checar_qtd_chefes_divisao(nrodivisao));
 
@@ -469,19 +495,21 @@ VALUES
     (8, 'Paquistão');
 
 -- Inserindo Participação dos Grupos nos Conflitos
+BEGIN;
 INSERT INTO
     EntPart (CodigoG, CodConflito, DEGrupo, DSGrupo)
 VALUES
     (1, 2, '2023-01-15', NULL),
     (2, 2, '2023-01-20', NULL),
-    (3, 1, '2022-05-10', '2024-08-20'),
-    (4, 4, '2021-11-01', NULL),
-    (3, 3, '2023-03-12', NULL),
+    -- (3, 1, '2022-05-10', '2024-08-20'),
+    -- (4, 4, '2021-11-01', NULL),
+    -- (3, 3, '2023-03-12', NULL),
     (5, 6, '2005-05-19', '2010-10-20'),
     (6, 6, '2005-05-19', '2010-10-20'),
     (7, 7, '2018-01-01', NULL),
-    (8, 7, '2018-01-01', NULL),
-    (1, 8, '2024-01-01', NULL);
+    (8, 7, '2018-01-01', NULL);
+    -- (1, 8, '2024-01-01', NULL);
+COMMIT;
 
 -- Inserindo Organizações Mediadoras
 INSERT INTO
