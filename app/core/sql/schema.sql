@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS Conflito (
     Nome VARCHAR(100) NOT NULL,
     NumFeridos INT,
     NumMortos INT,
-    TipoConf VARCHAR(50) -- Pode ser 'Territorial', 'Religioso', 'Economico', 'Racial'
+    TipoConf VARCHAR(50) NOT NULL -- Pode ser 'Territorial', 'Religioso', 'Economico', 'Racial'
 );
 
 -- Tabela ConflitoPais
