@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS Conflito (
     Nome VARCHAR(100) NOT NULL,
     NumFeridos INT,
     NumMortos INT,
-    TipoConf VARCHAR(50) NOT NULL -- Pode ser 'Territorial', 'Religioso', 'Economico', 'Racial'
+    TipoConf VARCHAR(50) NOT NULL CHECK (TipoConf IN ('Territorial', 'Religioso', 'Economico', 'Racial')) -- Pode ser 'Territorial', 'Religioso', 'Economico', 'Racial'
 );
 
 -- Tabela ConflitoPais
@@ -71,32 +71,36 @@ CREATE TABLE IF NOT EXISTS ConflitoPais (
 DROP TABLE IF EXISTS Territorial CASCADE;
 
 CREATE TABLE IF NOT EXISTS Territorial (
-    CodConflito INT PRIMARY KEY,
-    Regiao VARCHAR(100),
+    CodConflito INT,
+    Regiao VARCHAR(100) NOT NULL, -- Precisa ser NOT NULL para ser parte da PK
+    PRIMARY KEY (CodConflito, Regiao),
     FOREIGN KEY (CodConflito) REFERENCES Conflito (CodConflito)
 );
 
 DROP TABLE IF EXISTS Religioso CASCADE;
 
 CREATE TABLE IF NOT EXISTS Religioso (
-    CodConflito INT PRIMARY KEY,
-    Religiao VARCHAR(100),
+    CodConflito INT,
+    Religiao VARCHAR(100) NOT NULL,
+    PRIMARY KEY (CodConflito, Religiao),
     FOREIGN KEY (CodConflito) REFERENCES Conflito (CodConflito)
 );
 
 DROP TABLE IF EXISTS Economico CASCADE;
 
 CREATE TABLE IF NOT EXISTS Economico (
-    CodConflito INT PRIMARY KEY,
-    MatPrima VARCHAR(100),
+    CodConflito INT,
+    MatPrima VARCHAR(100) NOT NULL,
+    PRIMARY KEY (CodConflito, MatPrima),
     FOREIGN KEY (CodConflito) REFERENCES Conflito (CodConflito)
 );
 
 DROP TABLE IF EXISTS Racial CASCADE;
 
 CREATE TABLE IF NOT EXISTS Racial (
-    CodConflito INT PRIMARY KEY,
-    Etnia VARCHAR(100),
+    CodConflito INT,
+    Etnia VARCHAR(100) NOT NULL,
+    PRIMARY KEY (CodConflito, Etnia),
     FOREIGN KEY (CodConflito) REFERENCES Conflito (CodConflito)
 );
 
