@@ -197,6 +197,36 @@ CREATE TABLE IF NOT EXISTS Fornece (
 );
 
 -- =========== CRIANDO FUNÇÕES & TRIGGERS ===========
+
+-- Optei por construir uma função para garantir que todo conflito pertença a exatamente um subtipo (item 2a).
+CREATE OR REPLACE FUNCTION check_total_exclusiva()
+RETURNS TRIGGER AS $$
+DECLARE
+    count_tipos INT := 0;
+BEGIN
+    SELECT COUNT(*) INTO count_tipos FROM (
+        SELECT CodConflito FROM Territorial WHERE CodConflito = NEW.CodConflito
+        UNION ALL
+        SELECT CodConflito FROM Religioso WHERE CodConflito = NEW.CodConflito
+        UNION ALL
+        SELECT CodConflito FROM Economico WHERE CodConflito = NEW.CodConflito
+        UNION ALL
+        SELECT CodConflito FROM Racial WHERE CodConflito = NEW.CodConflito
+    ) AS union_all;
+
+    IF count_tipos != 1 THEN
+        RAISE EXCEPTION 'Conflito % deve pertencer a exatamente um subtipo', NEW.CodConflito;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Criação da trigger
+CREATE TRIGGER trg_total_exclusiva
+AFTER INSERT OR UPDATE ON Conflito
+FOR EACH ROW EXECUTE FUNCTION check_total_exclusiva();
+
 -- Optei por construir uma função para checar se uma determinada divisão possui menos de 3 chefes.
 CREATE OR REPLACE FUNCTION checar_qtd_chefes_divisao(id_divisao INT)
 RETURNS BOOLEAN AS $$
