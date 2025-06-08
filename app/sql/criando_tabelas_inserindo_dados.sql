@@ -214,7 +214,7 @@ BEGIN
         SELECT CodConflito FROM Racial WHERE CodConflito = NEW.CodConflito
     ) AS union_all;
 
-    IF count_tipos != 1 THEN
+    IF count_tipos > 0 THEN
         RAISE EXCEPTION 'Conflito % deve pertencer a exatamente um subtipo', NEW.CodConflito;
     END IF;
 
@@ -223,11 +223,29 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Criação da trigger
+DROP TRIGGER IF EXISTS trg_total_exclusiva ON Territorial;
+
 CREATE TRIGGER trg_total_exclusiva
-AFTER INSERT OR UPDATE ON Conflito
+BEFORE INSERT OR UPDATE ON Territorial
 FOR EACH ROW EXECUTE FUNCTION check_total_exclusiva();
 
--- Optei por construir uma função para checar se uma determinada divisão possui menos de 3 chefes.
+DROP TRIGGER IF EXISTS trg_total_exclusiva ON Economico;
+
+CREATE TRIGGER trg_total_exclusiva
+BEFORE INSERT OR UPDATE ON Economico
+FOR EACH ROW EXECUTE FUNCTION check_total_exclusiva();
+
+CREATE TRIGGER trg_total_exclusiva
+BEFORE INSERT OR UPDATE ON Religioso
+FOR EACH ROW EXECUTE FUNCTION check_total_exclusiva();
+
+DROP TRIGGER IF EXISTS trg_total_exclusiva ON Economico;
+
+CREATE TRIGGER trg_total_exclusiva
+BEFORE INSERT OR UPDATE ON Racial
+FOR EACH ROW EXECUTE FUNCTION check_total_exclusiva();
+
+-- Optei por construir uma função para checar se uma determinada divisão possui menos de 3 chefes. (item 2b)
 CREATE OR REPLACE FUNCTION checar_qtd_chefes_divisao(id_divisao INT)
 RETURNS BOOLEAN AS $$
     DECLARE
@@ -244,7 +262,7 @@ RETURNS BOOLEAN AS $$
     END;
 $$ LANGUAGE plpgsql;
 
--- Optei por construir uma função para checar se, após fazer as devidas inserções, os conflitos não podem ter menos de dois grupos envolvidos
+-- Optei por construir uma função para checar se, após fazer as devidas inserções, os conflitos não podem ter menos de dois grupos envolvidos (item 2c)
 CREATE OR REPLACE FUNCTION checar_qtd_grupos_conflito()
 RETURNS TRIGGER AS $$
     DECLARE
@@ -292,7 +310,7 @@ DEFERRABLE INITIALLY DEFERRED
 FOR EACH ROW
 EXECUTE FUNCTION checar_qtd_grupos_conflito();
 
--- Optei por construir uma função que sincronize as baixas de um conflito com base nas baixas das divisões
+-- Optei por construir uma função que sincronize as baixas de um conflito com base nas baixas das divisões (item 2d)
 CREATE OR REPLACE FUNCTION sincronizar_baixas_conflito()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -334,11 +352,11 @@ AFTER INSERT OR UPDATE OR DELETE ON Divisao
 FOR EACH ROW
 EXECUTE FUNCTION sincronizar_baixas_conflito();
 
--- Optei por criar uma função que garante que o número da divisão num determinado grupo armado seja sequencial
+-- Optei por criar uma função que garante que o número da divisão num determinado grupo armado seja sequencial (item 2d)
 CREATE OR REPLACE FUNCTION definir_nrodivisao_sequencial()
 RETURNS TRIGGER AS $$
 BEGIN
-    select coalesce(MAX(NroDivisao), 0) + 1
+    select coalesce(MAX(nrodivisao), 0) + 1
     into NEW.nrodivisao
     from divisao as d
     where d.codigog = NEW.codigog;
@@ -442,42 +460,27 @@ INSERT INTO
 VALUES
     ('Coronel', 1, 1, 'Presidente Snow'),
     ('Major', 2, 1, 'Presidente Snow'),
-    ('General de Brigada', 3, 2, 'Comandante Cobra'),
-    ('Marechal de Campo', 4, 3, 'General Aladeen'),
-    ('Capitão', 5, 4, 'Líder Koba'),
-    ('Almirante Ackbar', 6, 5, 'Mon Mothma'),
-    ('Darth Vader', 7, 6, 'Imperador Palpatine'),
-    ('General Veers', 8, 6, 'Imperador Palpatine'),
-    ('Mestre Assassino', 9, 7, 'Lorde das Sombras'),
-    ('Comandante Bárbaro', 10, 8, 'Rei do Norte');
+    ('General de Brigada', 1, 2, 'Comandante Cobra'),
+    -- ('Marechal de Campo', 1, 3, 'General Aladeen'), -- Erro!
+    -- ('Capitão', 1, 4, 'Líder Koba'), -- Erro!
+    -- ('Almirante Ackbar', 1, 5, 'Mon Mothma'), -- Erro!
+    -- ('Darth Vader', 1, 6, 'Imperador Palpatine'), -- Erro!
+    ('General Veers', 2, 6, 'Imperador Palpatine');
+    -- ('Mestre Assassino', 1, 7, 'Lorde das Sombras'), -- Erro!
+    -- ('Comandante Bárbaro', 1, 8, 'Rei do Norte'); -- Erro!
 
 -- Inserindo Conflitos
 INSERT INTO
     Conflito (Nome, NumFeridos, NumMortos, TipoConf)
 VALUES
     ('Guerra do Deserto', 5000, 2000, 'Economico'),
-    (
-        'Insurreição da Primavera',
-        12000,
-        4500,
-        'Territorial'
-    ),
+    ('Insurreição da Primavera', 12000, 4500, 'Territorial'),
     ('Cruzada Santa do Norte', 8000, 3200, 'Religioso'),
     ('Guerra de Segregação', 20000, 9000, 'Racial'),
     ('Batalha pela Água', 3000, 1000, 'Economico'),
-    (
-        'Guerra Civil Galáctica',
-        1500000,
-        700000,
-        'Territorial'
-    ),
+    ('Guerra Civil Galáctica', 1500000, 700000, 'Territorial'),
     ('A Longa Noite', 50000, 25000, 'Racial'),
-    (
-        'Guerra das Especiarias',
-        25000,
-        8000,
-        'Economico'
-    );
+    ('Guerra das Especiarias', 25000, 8000, 'Economico');
 
 -- Detalhando tipos de conflitos
 INSERT INTO
@@ -490,6 +493,7 @@ VALUES
 INSERT INTO
     Territorial (CodConflito, Regiao)
 VALUES
+    -- (1, 'América do Norte'), -- Erro!
     (2, 'Província do Norte'),
     (6, 'Borda Exterior da Galáxia');
 
@@ -531,14 +535,14 @@ INSERT INTO
 VALUES
     (1, 2, '2023-01-15', NULL),
     (2, 2, '2023-01-20', NULL),
-    -- (3, 1, '2022-05-10', '2024-08-20'),
-    -- (4, 4, '2021-11-01', NULL),
-    -- (3, 3, '2023-03-12', NULL),
+    -- (3, 1, '2022-05-10', '2024-08-20'), -- Erro!
+    -- (4, 4, '2021-11-01', NULL), -- Erro!
+    -- (3, 3, '2023-03-12', NULL), -- Erro!
     (5, 6, '2005-05-19', '2010-10-20'),
     (6, 6, '2005-05-19', '2010-10-20'),
     (7, 7, '2018-01-01', NULL),
     (8, 7, '2018-01-01', NULL);
-    -- (1, 8, '2024-01-01', NULL);
+    -- (1, 8, '2024-01-01', NULL); -- Erro!
 COMMIT;
 
 -- Inserindo Organizações Mediadoras
