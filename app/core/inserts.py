@@ -267,6 +267,8 @@ def InserirChefeMilitar(conn):
                 st.warning("Todos os campos são obrigatórios.")
 
 def InserirConflitoBelico(conn):
+    gruposArmados = BuscarGruposArmados(conn)
+
     st.subheader("⚔️ Inserção de Novo Conflito Bélico")
     TiposDeConflito = ["Territorial", "Religioso", "Econômico", "Racial"]
     with st.form("Formulário Conflito Bélico", clear_on_submit=True):
@@ -286,43 +288,85 @@ def InserirConflitoBelico(conn):
             help="Ex: Brasil, Argentina, Uruguai",
             placeholder="Brasil, Argentina, Uruguai, Paraguai"
         )
+
+        st.write("Grupos Armados (no mínimo 2)")
+        tabelaGrupos: pd.DataFrame = st.data_editor(
+            data=pd.DataFrame({
+                "grupo": [None, None],
+                "entrada": [None, None],
+                "saida": [None, None]
+            }),
+            num_rows="dynamic",
+            column_config={
+                "grupo": st.column_config.SelectboxColumn(
+                    "Grupo Armado",
+                    options=list(gruposArmados.keys()),
+                    width="small",
+                    required=True,
+                ),
+                "entrada": st.column_config.DateColumn(
+                    "Data de Entrada",
+                    format="DD/MM/YYYY",
+                    required=True
+                ),
+                "saida": st.column_config.DateColumn(
+                    "Data de Saída",
+                    format="DD/MM/YYYY"
+                )
+            }
+        )
+
         submitted = st.form_submit_button("Inserir Conflito Bélico", type="primary")
-        if submitted:
-            if NomeConflito and TipoEscolhido and DetalhesTipoConflito:
-                try:
-                    with conn.cursor() as cur:
+        if not submitted:
+            return
+        
+        if NomeConflito and TipoEscolhido and DetalhesTipoConflito:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "INSERT INTO Conflito (Nome, NumFeridos, NumMortos, TipoConf) VALUES (%s, %s, %s, %s) RETURNING CodConflito;",
+                        (NomeConflito, NumeroFeridos, NumeroMortos, TipoEscolhido)
+                    )
+                    CodNovoConflito = cur.fetchone()[0]
+                    ListaDetalhes = [det.strip() for det in DetalhesTipoConflito.split(',') if det.strip()]
+                    if TipoEscolhido == "Territorial":
+                        for detalhe in ListaDetalhes:
+                            cur.execute("INSERT INTO Territorial (CodConflito, Regiao) VALUES (%s, %s);", (CodNovoConflito, detalhe))
+                    elif TipoEscolhido == "Religioso":
+                        for detalhe in ListaDetalhes:
+                            cur.execute("INSERT INTO Religioso (CodConflito, Religiao) VALUES (%s, %s);", (CodNovoConflito, detalhe))
+                    elif TipoEscolhido == "Econômico":
+                        for detalhe in ListaDetalhes:
+                            cur.execute("INSERT INTO Econômico (CodConflito, MatPrima) VALUES (%s, %s);", (CodNovoConflito, detalhe))
+                    elif TipoEscolhido == "Racial":
+                        for detalhe in ListaDetalhes:
+                            cur.execute("INSERT INTO Racial (CodConflito, Etnia) VALUES (%s, %s);", (CodNovoConflito, detalhe))
+                    if PaisesEnvolvidos:
+                        lista_paises = [pais.strip() for pais in PaisesEnvolvidos.split(',') if pais.strip()]
+                        for pais in lista_paises:
+                            cur.execute("INSERT INTO ConflitoPais (CodConflito, Pais) VALUES (%s, %s);", (CodNovoConflito, pais))
+                   
+                    # Adiciona todos os grupos armados envolvidos no conflito
+                    for i, r in tabelaGrupos.iterrows():
                         cur.execute(
-                            "INSERT INTO Conflito (Nome, NumFeridos, NumMortos, TipoConf) VALUES (%s, %s, %s, %s) RETURNING CodConflito;",
-                            (NomeConflito, NumeroFeridos, NumeroMortos, TipoEscolhido)
+                            """
+                            INSERT INTO EntPart (CodigoG, CodConflito, DEGrupo, DSGrupo)
+                            VALUES (%s, %s, %s, %s) RETURNING IdEntPart;
+                            """,
+                            (gruposArmados[r['grupo']], CodNovoConflito, r['entrada'], r['saida'])
                         )
-                        CodNovoConflito = cur.fetchone()[0]
-                        ListaDetalhes = [det.strip() for det in DetalhesTipoConflito.split(',') if det.strip()]
-                        if TipoEscolhido == "Territorial":
-                            for detalhe in ListaDetalhes:
-                                cur.execute("INSERT INTO Territorial (CodConflito, Regiao) VALUES (%s, %s);", (CodNovoConflito, detalhe))
-                        elif TipoEscolhido == "Religioso":
-                            for detalhe in ListaDetalhes:
-                                cur.execute("INSERT INTO Religioso (CodConflito, Religiao) VALUES (%s, %s);", (CodNovoConflito, detalhe))
-                        elif TipoEscolhido == "Econômico":
-                            for detalhe in ListaDetalhes:
-                                cur.execute("INSERT INTO Econômico (CodConflito, MatPrima) VALUES (%s, %s);", (CodNovoConflito, detalhe))
-                        elif TipoEscolhido == "Racial":
-                            for detalhe in ListaDetalhes:
-                                cur.execute("INSERT INTO Racial (CodConflito, Etnia) VALUES (%s, %s);", (CodNovoConflito, detalhe))
-                        if PaisesEnvolvidos:
-                            lista_paises = [pais.strip() for pais in PaisesEnvolvidos.split(',') if pais.strip()]
-                            for pais in lista_paises:
-                                cur.execute("INSERT INTO ConflitoPais (CodConflito, Pais) VALUES (%s, %s);", (CodNovoConflito, pais))
-                        conn.commit()
-                    st.success(f"Conflito '{NomeConflito}' (Código: {CodNovoConflito}) cadastrado com sucesso!")
-                except Exception as e:
-                    conn.rollback()
-                    st.error(f"Erro ao cadastrar Conflito Bélico: {e}")
-            elif not NomeConflito:
-                st.warning("Nome do conflito deve ser preenchido especificado.")
-            elif not TipoEscolhido:
-                st.warning("Tipo de conflito deve ser selecionado.")
-            elif not DetalhesTipoConflito:
-                st.warning("Detalhes sobre o tipo de conflito devem ser preenchidos.")
-            else:
-                st.warning("Nome, tipo de conflito e o detalhe específico do tipo são obrigatórios.")
+
+                    conn.commit()
+
+                st.success(f"Conflito '{NomeConflito}' (Código: {CodNovoConflito}) cadastrado com sucesso!")
+            except Exception as e:
+                conn.rollback()
+                st.error(f"Erro ao cadastrar Conflito Bélico: {e}")
+        elif not NomeConflito:
+            st.warning("Nome do conflito deve ser preenchido especificado.")
+        elif not TipoEscolhido:
+            st.warning("Tipo de conflito deve ser selecionado.")
+        elif not DetalhesTipoConflito:
+            st.warning("Detalhes sobre o tipo de conflito devem ser preenchidos.")
+        else:
+            st.warning("Nome, tipo de conflito e o detalhe específico do tipo são obrigatórios.")

@@ -94,7 +94,7 @@ def main(TipoConexao):
 
         st.divider()
 
-        # iii. 5 conflitos
+        # iii. 5 maiores conflitos
         st.subheader("iii. Maiores Conflitos")
         st.write("Liste os 5 conflitos com os maiores números de vítimas fatais")
         if st.button("Listar", key='listar_iii'):
@@ -110,7 +110,7 @@ def main(TipoConexao):
 
         st.divider()
 
-        # v. 5 maiores organizações
+        # v. 5 maiores grupos armados
         st.subheader("v. Maiores Grupos Armados")
         st.write("Liste os 5 maiores grupos armados baseado no número de armas fornecidas")
         if st.button("Listar", key='listar_v'):
