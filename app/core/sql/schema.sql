@@ -206,20 +206,24 @@ CREATE TABLE IF NOT EXISTS Fornece (
 CREATE OR REPLACE FUNCTION check_total_exclusiva()
 RETURNS TRIGGER AS $$
 DECLARE
-    count_tipos INT := 0;
+    count_outros_tipos INT := 0;
+    tabela_atual TEXT := TG_TABLE_NAME;
 BEGIN
-    SELECT COUNT(*) INTO count_tipos FROM (
-        SELECT CodConflito FROM Territorial WHERE CodConflito = NEW.CodConflito
-        UNION ALL
-        SELECT CodConflito FROM Religioso WHERE CodConflito = NEW.CodConflito
-        UNION ALL
-        SELECT CodConflito FROM Economico WHERE CodConflito = NEW.CodConflito
-        UNION ALL
-        SELECT CodConflito FROM Racial WHERE CodConflito = NEW.CodConflito
-    ) AS union_all;
+    -- Verifica se o conflito pertence a qualquer outro subtipo
+    SELECT COUNT(*) INTO count_outros_tipos
+    FROM (
+        SELECT CodConflito FROM Territorial WHERE CodConflito = NEW.CodConflito AND tabela_atual != 'territorial'
+        UNION
+        SELECT CodConflito FROM Religioso WHERE CodConflito = NEW.CodConflito AND tabela_atual != 'religioso'
+        UNION
+        SELECT CodConflito FROM Economico WHERE CodConflito = NEW.CodConflito AND tabela_atual != 'economico'
+        UNION
+        SELECT CodConflito FROM Racial WHERE CodConflito = NEW.CodConflito AND tabela_atual != 'racial'
+    ) AS outros_tipos;
 
-    IF count_tipos > 0 THEN
-        RAISE EXCEPTION 'Conflito % deve pertencer a exatamente um subtipo', NEW.CodConflito;
+    IF count_outros_tipos > 0 THEN
+        RAISE EXCEPTION 'Conflito % só pode pertencer a um tipo (%, Territorial, Religioso, Economico ou Racial)', 
+            NEW.CodConflito, tabela_atual;
     END IF;
 
     RETURN NEW;

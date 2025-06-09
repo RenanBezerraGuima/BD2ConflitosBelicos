@@ -66,11 +66,14 @@ def InserirParticipacaoConflito(conn):
                 "entrada": st.column_config.DateColumn(
                     "Data de Entrada",
                     format="DD/MM/YYYY",
-                    required=True
+                    required=True,
+                    max_value=datetime.date.today(),
+                    min_value=datetime.date.min
                 ),
                 "saida": st.column_config.DateColumn(
                     "Data de Saída",
-                    format="DD/MM/YYYY"
+                    format="DD/MM/YYYY",
+                    min_value=datetime.date.min
                 )
             }
         )
@@ -307,11 +310,14 @@ def InserirConflitoBelico(conn):
                 "entrada": st.column_config.DateColumn(
                     "Data de Entrada",
                     format="DD/MM/YYYY",
-                    required=True
+                    required=True,
+                    max_value=datetime.date.today(),
+                    min_value=datetime.date.min
                 ),
                 "saida": st.column_config.DateColumn(
                     "Data de Saída",
-                    format="DD/MM/YYYY"
+                    format="DD/MM/YYYY",
+                    min_value=datetime.date.min
                 )
             }
         )
