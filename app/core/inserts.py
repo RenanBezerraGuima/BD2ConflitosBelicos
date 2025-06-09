@@ -270,7 +270,7 @@ def InserirConflitoBelico(conn):
     gruposArmados = BuscarGruposArmados(conn)
 
     st.subheader("⚔️ Inserção de Novo Conflito Bélico")
-    TiposDeConflito = ["Territorial", "Religioso", "Econômico", "Racial"]
+    TiposDeConflito = ["Territorial", "Religioso", "Economico", "Racial"]
     with st.form("Formulário Conflito Bélico", clear_on_submit=True):
         col1, col2 = st.columns(2)
         NomeConflito = col1.text_input("Nome do Conflito:", placeholder="Guerra do Norte")
@@ -335,9 +335,9 @@ def InserirConflitoBelico(conn):
                     elif TipoEscolhido == "Religioso":
                         for detalhe in ListaDetalhes:
                             cur.execute("INSERT INTO Religioso (CodConflito, Religiao) VALUES (%s, %s);", (CodNovoConflito, detalhe))
-                    elif TipoEscolhido == "Econômico":
+                    elif TipoEscolhido == "Economico":
                         for detalhe in ListaDetalhes:
-                            cur.execute("INSERT INTO Econômico (CodConflito, MatPrima) VALUES (%s, %s);", (CodNovoConflito, detalhe))
+                            cur.execute("INSERT INTO Economico (CodConflito, MatPrima) VALUES (%s, %s);", (CodNovoConflito, detalhe))
                     elif TipoEscolhido == "Racial":
                         for detalhe in ListaDetalhes:
                             cur.execute("INSERT INTO Racial (CodConflito, Etnia) VALUES (%s, %s);", (CodNovoConflito, detalhe))
