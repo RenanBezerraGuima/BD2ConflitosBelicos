@@ -259,7 +259,7 @@ RETURNS BOOLEAN AS $$
         into contagem_atual
         from chefemilitar as c
         where c.nrodivisao = id_divisao;
-        IF (contagem_atual > 3) THEN
+        IF contagem_atual > 2 THEN
             RAISE EXCEPTION 'Uma divisão deve possuir no máximo 3 chefes militares! Operação abortada.';
         END IF;
         return TRUE;
@@ -467,7 +467,7 @@ VALUES
     ('General de Brigada', 1, 2, 'Comandante Cobra'),
     -- ('Marechal de Campo', 1, 3, 'General Aladeen'), -- Erro!
     -- ('Capitão', 1, 4, 'Líder Koba'), -- Erro!
-    -- ('Almirante Ackbar', 1, 5, 'Mon Mothma'), -- Erro!
+    ('Almirante Ackbar', 1, 5, 'Mon Mothma'), -- Erro!
     -- ('Darth Vader', 1, 6, 'Imperador Palpatine'), -- Erro!
     ('General Veers', 2, 6, 'Imperador Palpatine');
     -- ('Mestre Assassino', 1, 7, 'Lorde das Sombras'), -- Erro!
