@@ -19,6 +19,7 @@ streamlit run app/remote.py
 ```
 
 Para interagir com uma aplicação que executa remotamente em um banco de dados remoto:
+
 https://conflitosbelicosbd.streamlit.app/
 
 # Estrutura do Projeto
