@@ -53,3 +53,23 @@ def ResetarBD(TipoConexao):
     finally:
         if conn:
             conn.close()
+            
+def DeletarBD(TipoConexao):
+    conn = conexaoBD(TipoConexao)
+    if conn is None:
+        st.error("Falha ao obter conexão para resetar o banco de dados.")
+        return
+    
+    caminho = "core/sql/delete.sql"
+    try:
+        with conn.cursor() as cur:
+            with open(caminho, "r", encoding="utf-8") as f:
+                sql = f.read()
+                cur.execute(sql)
+        conn.commit()
+        st.success("Todas as tuplas do BD foram deletadas.")
+    except Exception as e:
+        st.error(f"Erro ao deleter as tuplas: {e}")
+    finally:
+        if conn:
+            conn.close()

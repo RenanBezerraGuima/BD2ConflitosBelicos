@@ -3,7 +3,7 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import pandas as pd
 import datetime
-from .db import conexaoBD, ResetarBD
+from .db import conexaoBD, ResetarBD, DeletarBD
 from .queries import BuscarGruposArmados, BuscarLideresPoliticos, BuscarDivisoes, BuscarPaises, BuscarConflitos
 from .plots import gerarHistograma
 from .inserts import (
@@ -26,10 +26,15 @@ def main(TipoConexao):
     )
     st.title("⚔️ Conflitos BélicosBD")
 
-    # Botão de Reset na sidebar
+    # Botão de Reset
     if st.button("Resetar Banco de Dados", type="primary"):
         with st.spinner("Resetando o banco de dados..."):
             ResetarBD(TipoConexao)
+
+    # Botão de Delete
+    if st.button("Deletar tuplas do Banco de Dados", type="primary"):
+        with st.spinner("Deletando as tuplas do banco de dados..."):
+            DeletarBD(TipoConexao)
     
     tabInsercoes, tabConsultas = st.tabs(["📝 Inserções", "📊 Consultas"])
 
