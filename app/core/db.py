@@ -6,7 +6,7 @@ from pathlib import Path
 # https://www.psycopg.org/psycopg3/docs/basic/usage.html
 
 # define a raiz 'app/' dinamicamente
-BASE_DIR = Path(__file__).resolve().parent.parent  # app/core/.. → app/
+BASE_DIR = Path(__file__).resolve().parent.parent.parent  # app/core/.. → app/
 
 def conexaoBD(TipoConexao):
     """Estabelece conexão com o banco de dados PostgreSQL com base no tipo especificado."""
@@ -44,7 +44,7 @@ def ResetarBD(TipoConexao):
         st.error("Falha ao obter conexão para resetar o banco de dados.")
         return
 
-    caminho = BASE_DIR / "sql" / "schema.sql"
+    caminho = BASE_DIR / "app" / "core"/ "sql" / "schema.sql"
     try:
         with conn.cursor() as cur:
             with open(caminho, "r", encoding="utf-8") as f:
@@ -64,7 +64,7 @@ def DeletarBD(TipoConexao):
         st.error("Falha ao obter conexão para resetar o banco de dados.")
         return
     
-    caminho = BASE_DIR / "sql" / "delete.sql"
+    caminho = BASE_DIR / "app" / "core" / "sql" / "delete.sql"
     try:
         with conn.cursor() as cur:
             with open(caminho, "r", encoding="utf-8") as f:
