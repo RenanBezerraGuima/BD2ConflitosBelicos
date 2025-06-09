@@ -1,6 +1,13 @@
 import streamlit as st
 from .db import conexaoBD, ResetarBD, DeletarBD
-from .plots import gerarHistograma
+from .plots import (
+	gerarHistograma,
+    listarII,
+    listarIII,
+    listarIV,
+    listarV,
+    listarVI,
+)
 from .inserts import (
     InserirGrupoArmado,
     InserirParticipacaoConflito,
@@ -68,9 +75,53 @@ def main(TipoConexao):
 
     with tabConsultas:
         st.header("📊 Consultas no Banco de Dados")
+
+        # i. Histograma
         st.subheader("Histograma de Tipos de Conflito")
         st.write("Visualize a distribuição dos conflitos por tipo")
 
         if st.button("Gerar Histograma", type="primary"):
             with st.spinner("Gerando Histograma..."):
                 gerarHistograma(TipoConexao) # Passa o tipo de conexão
+        
+        st.divider()
+
+        # ii. Fornecedores de Barret M82 / M200"
+        st.subheader("ii. Fornecedores de Alta Periculosidade")
+        st.write("Liste os fornecedores de armamentos do tipo Barret M82 ou M200 Intervention")
+        if st.button("Listar"):
+            listarII(TipoConexao)
+
+        st.divider()
+
+        # iii. 5 conflitos
+        st.subheader("iii. Maiores Conflitos")
+        st.write("Liste os 5 conflitos com os maiores números de vítimas fatais")
+        if st.button("Listar", key='listar_iii'):
+            listarIII(TipoConexao)
+
+        st.divider()
+
+        # iv. 5 maiores organizações
+        st.subheader("iv. Maiores Organizações")
+        st.write("Liste as 5 maiores organizações baseado em número de mediações")
+        if st.button("Listar", key='listar_iv'):
+            listarIV(TipoConexao)
+
+        st.divider()
+
+        # v. 5 maiores organizações
+        st.subheader("v. Maiores Grupos Armados")
+        st.write("Liste os 5 maiores grupos armados baseado no número de armas fornecidas")
+        if st.button("Listar", key='listar_v'):
+            listarV(TipoConexao)
+
+        st.divider()
+
+        # vi. País com o maior número de conflitos religiosos
+        st.subheader("vi. País Mais Afetado por Conflitos Religiosos")
+        st.write("Liste o país mais envolvido em conflitos de natureza religiosa")
+        if st.button("Listar", key='listar_vi'):
+            listarVI(TipoConexao)
+
+        st.divider()

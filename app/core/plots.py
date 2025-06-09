@@ -47,3 +47,136 @@ def gerarHistograma(TipoConexao):
     finally:
         if conn:
             conn.close()
+
+
+def listarII(tipoConexao):
+    conn = conexaoBD(tipoConexao)
+    if not conn:
+        return
+    
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT nometraf, nomearma, numarmas, nomegrupo
+                FROM public.fornece
+                NATURAL JOIN public.grupoarmado
+                WHERE nomearma='Barret M82' OR nomearma='M200 Intervention'
+                """
+            )
+            dados = cur.fetchall()
+
+            df = pd.DataFrame(dados, columns=["Traficante", 'Arma', 'Quantidade', 'Grupo'])
+            st.dataframe(df, use_container_width=False)
+    except Exception as ex:
+        st.error(f"Erro ao fazer listagem. ${ex}")
+    finally:
+        if conn:
+            conn.close()
+
+def listarIII(tipoConexao):
+    conn = conexaoBD(tipoConexao)
+    if not conn:
+        return
+    
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT nome, tipoconf, nummortos, numferidos
+                FROM public.conflito
+                ORDER BY nummortos DESC
+                LIMIT 5
+                """
+            )
+            dados = cur.fetchall()
+
+            df = pd.DataFrame(dados, columns=["Conflito", 'Tipo', 'Mortos', 'Feridos'])
+            st.dataframe(df, use_container_width=False)
+    except Exception as ex:
+        st.error(f"Erro ao fazer listagem. ${ex}")
+    finally:
+        if conn:
+            conn.close()
+
+def listarIV(tipoConexao):
+    conn = conexaoBD(tipoConexao)
+    if not conn:
+        return
+    
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT nomeorg, COUNT(*) AS mediacoes
+                FROM entradmed
+                NATURAL JOIN organizacaom
+                GROUP BY nomeorg
+                ORDER BY mediacoes DESC
+                LIMIT 5
+                """
+            )
+            dados = cur.fetchall()
+
+            df = pd.DataFrame(dados, columns=["Organização", 'Número de Mediações'])
+            st.dataframe(df, use_container_width=False)
+    except Exception as ex:
+        st.error(f"Erro ao fazer listagem. ${ex}")
+    finally:
+        if conn:
+            conn.close()
+
+def listarV(tipoConexao):
+    conn = conexaoBD(tipoConexao)
+    if not conn:
+        return
+    
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT nomegrupo, SUM(numarmas) as armas
+                FROM fornece
+                NATURAL JOIN grupoarmado
+                GROUP BY nomegrupo
+                ORDER BY armas DESC
+                LIMIT 5
+                """
+            )
+            dados = cur.fetchall()
+
+            df = pd.DataFrame(dados, columns=["Grupo", 'Número de Armas Totais'])
+            st.dataframe(df, use_container_width=False)
+    except Exception as ex:
+        st.error(f"Erro ao fazer listagem. ${ex}")
+    finally:
+        if conn:
+            conn.close()
+
+def listarVI(tipoConexao):
+    conn = conexaoBD(tipoConexao)
+    if not conn:
+        return
+    
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT pais, COUNT(pais) as conflitos
+                FROM conflitopais
+                NATURAL JOIN conflito
+                WHERE tipoconf='Religioso'
+                GROUP BY pais 
+                ORDER BY conflitos
+                LIMIT 1
+                """
+            )
+            dados = cur.fetchall()
+
+            df = pd.DataFrame(dados, columns=["País", 'Número de Conflitos Religiosos'])
+            st.dataframe(df, use_container_width=False)
+    except Exception as ex:
+        st.error(f"Erro ao fazer listagem. ${ex}")
+    finally:
+        if conn:
+            conn.close()
