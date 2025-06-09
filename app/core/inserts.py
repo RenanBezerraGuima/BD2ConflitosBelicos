@@ -52,33 +52,42 @@ def InserirParticipacaoConflito(conn):
         DataSaida = st.date_input(
             "Data de Saída do Conflito (opcional):", value=None, key="pc_DataSaida", format="DD/MM/YYYY", max_value="today"
         )
-        submitted = st.form_submit_button("Registrar Participação", type="primary")
-        if submitted:
-            if NomeGrupoSelecionado and NomeConflitoSelecionado and DataEntrada:
-                CodigoG = GruposArmados[NomeGrupoSelecionado]
-                CodigoConflito = conflitos[NomeConflitoSelecionado]
-                if DataSaida and DataSaida < DataEntrada:
-                    st.error("A data de saída não pode ser anterior à data de entrada.")
-                    return
-                try:
-                    with conn.cursor() as cur:
-                        cur.execute(
-                            """INSERT INTO EntPart (CodigoG, CodConflito, DEGrupo, DSGrupo)
-                            VALUES (%s, %s, %s, %s) RETURNING IdEntPart;""",
-                            (CodigoG, CodigoConflito, DataEntrada, DataSaida)
-                        )
-                        id_ent_part = cur.fetchone()[0]
-                        conn.commit()
-                    st.success(f"Participação do grupo '{NomeGrupoSelecionado}' no conflito '{NomeConflitoSelecionado}' registrada com sucesso! ID: {id_ent_part}")
-                except psycopg.IntegrityError as ie:
-                    conn.rollback()
-                    st.error(f"Erro de integridade: Verifique se esta participação já existe ou se os códigos são válidos. Detalhes: {ie}")
-                except Exception as e:
-                    conn.rollback()
-                    st.error(f"Erro ao registrar participação: {e}")
-            else:
-                st.warning("Grupo armado, conflito e data de entrada são obrigatórios.")
 
+        # Aguarde o clique no botão de submit
+        submitted = st.form_submit_button("Registrar Participação", type="primary")
+        if not submitted:
+            return
+        
+        # Garante o preenchimento dos campos
+        if not NomeGrupoSelecionado or not NomeConflitoSelecionado or not DataEntrada:
+            st.warning("Grupo armado, conflito e data de entrada são obrigatórios.")
+            return
+
+        # Verificação de sanidade das datas
+        if DataSaida and DataSaida < DataEntrada:
+            st.error("A data de saída não pode ser anterior à data de entrada.")
+            return
+
+        CodigoG = GruposArmados[NomeGrupoSelecionado]
+        CodigoConflito = conflitos[NomeConflitoSelecionado]
+
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO EntPart (CodigoG, CodConflito, DEGrupo, DSGrupo)
+                    VALUES (%s, %s, %s, %s) RETURNING IdEntPart;""",
+                    (CodigoG, CodigoConflito, DataEntrada, DataSaida)
+                )
+                id_ent_part = cur.fetchone()[0]
+                conn.commit()
+            st.success(f"Participação do grupo '{NomeGrupoSelecionado}' no conflito '{NomeConflitoSelecionado}' registrada com sucesso! ID: {id_ent_part}")
+        except psycopg.IntegrityError as ie:
+            conn.rollback()
+            st.error(f"Erro de integridade: Verifique se esta participação já existe ou se os códigos são válidos. Detalhes: {ie}")
+        except Exception as e:
+            conn.rollback()
+            st.error(f"Erro ao registrar participação: {e}")
+            
 def InserirLiderPolitico(conn):
     st.subheader("👨‍💼 Inserção de Novo Líder Político")
     with st.form("Formulário Líder Político", clear_on_submit=True):
