@@ -1,10 +1,5 @@
 import streamlit as st
-import streamlit as st
-import matplotlib.pyplot as plt
-import pandas as pd
-import datetime
 from .db import conexaoBD, ResetarBD, DeletarBD
-from .queries import BuscarGruposArmados, BuscarLideresPoliticos, BuscarDivisoes, BuscarPaises, BuscarConflitos
 from .plots import gerarHistograma
 from .inserts import (
     InserirGrupoArmado,

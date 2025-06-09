@@ -1,6 +1,7 @@
 import streamlit as st
 import psycopg
 import datetime
+import pandas as pd
 from .queries import BuscarGruposArmados, BuscarLideresPoliticos, BuscarDivisoes, BuscarConflitos
 
 def InserirGrupoArmado(conn):
@@ -40,47 +41,106 @@ def InserirParticipacaoConflito(conn):
         st.warning("Nenhum conflito cadastrado. Cadastre um conflito primeiro.")
         return
     with st.form("Formulário de Participação de Conflitos", clear_on_submit=True):
-        NomeGrupoSelecionado = st.selectbox(
-            "Selecione o Grupo Armado:", options=list(GruposArmados.keys()), index=None, placeholder="Escolha um grupo", key="pc_grupo"
-        )
         NomeConflitoSelecionado = st.selectbox(
-            "Selecione o Conflito:", options=list(conflitos.keys()), index=None, placeholder="Escolha um conflito", key="pc_conflito"
+            "Selecione o Conflito:",
+            options=list(conflitos.keys()),
+            index=None,
+            placeholder="Escolha um conflito",
+            key="pc_conflito"
         )
-        DataEntrada = st.date_input(
-            "Data de Entrada no Conflito:", key="pc_DataEntrada", format="DD/MM/YYYY", min_value=datetime.date(1,1,1), max_value="today"
+
+        tabelaGrupos: pd.DataFrame = st.data_editor(
+            data=pd.DataFrame({
+                "grupo": [None],
+                "entrada": [None],
+                "saida": [None]
+            }),
+            num_rows="dynamic",
+            column_config={
+                "grupo": st.column_config.SelectboxColumn(
+                    "Grupo Armado",
+                    options=list(GruposArmados.keys()),
+                    width="small",
+                    required=True,
+                ),
+                "entrada": st.column_config.DateColumn(
+                    "Data de Entrada",
+                    format="DD/MM/YYYY",
+                    required=True
+                ),
+                "saida": st.column_config.DateColumn(
+                    "Data de Saída",
+                    format="DD/MM/YYYY"
+                )
+            }
         )
-        DataSaida = st.date_input(
-            "Data de Saída do Conflito (opcional):", value=None, key="pc_DataSaida", format="DD/MM/YYYY", max_value="today"
-        )
+        
+        #DataEntrada = st.date_input(
+        #    "Data de Entrada no Conflito:", key="pc_DataEntrada", format="DD/MM/YYYY", min_value=datetime.date(1,1,1), max_value="today"
+        #)
+        #DataSaida = st.date_input(
+        #    "Data de Saída do Conflito (opcional):", value=None, key="pc_DataSaida", format="DD/MM/YYYY", max_value="today"
+        #)
 
         # Aguarde o clique no botão de submit
         submitted = st.form_submit_button("Registrar Participação", type="primary")
         if not submitted:
             return
         
-        # Garante o preenchimento dos campos
-        if not NomeGrupoSelecionado or not NomeConflitoSelecionado or not DataEntrada:
-            st.warning("Grupo armado, conflito e data de entrada são obrigatórios.")
+        if not NomeConflitoSelecionado:
+            st.error("É obrigatório especificar um conflito!")
             return
+
+        # Verificação de sanidade das linhas
+        for i, r in tabelaGrupos.iterrows():
+            if r['saida'] and r['saida'] < r['entrada']:
+                st.error("A data de saída não pode ser anterior à data de entrada.")
+                return
+
+        # Garante o preenchimento dos campos
+        #if not NomeGrupoSelecionado or not NomeConflitoSelecionado or not DataEntrada:
+        #    st.warning("Grupo armado, conflito e data de entrada são obrigatórios.")
+        #    return
 
         # Verificação de sanidade das datas
-        if DataSaida and DataSaida < DataEntrada:
-            st.error("A data de saída não pode ser anterior à data de entrada.")
-            return
+        #if DataSaida and DataSaida < DataEntrada:
+        #    st.error("A data de saída não pode ser anterior à data de entrada.")
+        #    return
 
-        CodigoG = GruposArmados[NomeGrupoSelecionado]
+        #CodigoG = GruposArmados[NomeGrupoSelecionado]
         CodigoConflito = conflitos[NomeConflitoSelecionado]
 
         try:
             with conn.cursor() as cur:
-                cur.execute(
-                    """INSERT INTO EntPart (CodigoG, CodConflito, DEGrupo, DSGrupo)
-                    VALUES (%s, %s, %s, %s) RETURNING IdEntPart;""",
-                    (CodigoG, CodigoConflito, DataEntrada, DataSaida)
-                )
-                id_ent_part = cur.fetchone()[0]
+                for i, r in tabelaGrupos.iterrows():
+                    idGrupo = GruposArmados[r['grupo']]
+                    idConflito = CodigoConflito
+                    entrada = r['entrada']
+                    saida = r['saida']
+
+                    cur.execute(
+                        """INSERT INTO EntPart (CodigoG, CodConflito, DEGrupo, DSGrupo)
+                        VALUES (%s, %s, %s, %s) RETURNING IdEntPart;""",
+                        (idGrupo, idConflito, entrada, saida)
+                    )
+
+                #cur.execute(
+                #    """INSERT INTO EntPart (CodigoG, CodConflito, DEGrupo, DSGrupo)
+                #    VALUES (%s, %s, %s, %s) RETURNING IdEntPart;""",
+                #    (CodigoGrupos[0], CodigoConflito, DataEntrada, DataSaida)
+                #)
+                #id_ent_part = cur.fetchone()[0]
+                id_ent_part = 0
+
+                #cur.execute(
+                #    """INSERT INTO EntPart (CodigoG, CodConflito, DEGrupo, DSGrupo)
+                #    VALUES (%s, %s, %s, %s) RETURNING IdEntPart;""",
+                #    (CodigoGrupos[1], CodigoConflito, DataEntrada, DataSaida)
+                #)
                 conn.commit()
-            st.success(f"Participação do grupo '{NomeGrupoSelecionado}' no conflito '{NomeConflitoSelecionado}' registrada com sucesso! ID: {id_ent_part}")
+
+            st.success(f"Participações cadastradas com sucesso!")
+            #st.success(f"Participação do grupo '{NomeGrupoSelecionado}' no conflito '{NomeConflitoSelecionado}' registrada com sucesso! ID: {id_ent_part}")
         except psycopg.IntegrityError as ie:
             conn.rollback()
             st.error(f"Erro de integridade: Verifique se esta participação já existe ou se os códigos são válidos. Detalhes: {ie}")
