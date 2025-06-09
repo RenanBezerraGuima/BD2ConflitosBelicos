@@ -1,5 +1,6 @@
 import streamlit as st
 import psycopg
+from pathlib import Path
 
 # Documentação do biblioteca psycopg (PsycoticPostGree)
 # https://www.psycopg.org/psycopg3/docs/basic/usage.html
