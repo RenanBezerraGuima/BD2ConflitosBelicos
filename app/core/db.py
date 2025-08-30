@@ -26,7 +26,7 @@ def conexaoBD(TipoConexao):
     # Banco de dados hosteado na plataforma neon
     elif TipoConexao == "remoto":
         TipoConexaoErro = "REMOTO"
-        StringConexao = "postgresql://neondb_owner:npg_tR8DcpdN1rAI@ep-bitter-tooth-a8mynly3-pooler.eastus2.azure.neon.tech/neondb?sslmode=require"
+        StringConexao = "CONEXAOEXEMPLO"
     else:
         st.error(f"Tipo de conexão desconhecido: {TipoConexao}")
         return None
